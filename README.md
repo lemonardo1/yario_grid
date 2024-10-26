@@ -16,6 +16,7 @@ python -m retro.import "/path/to/unzipped/super mario bros. (world)"
 
 
 class YoloLabel(Enum):
+    
     Mario_small = 0
     Mario_big = 1
     Mario_fire = 2
