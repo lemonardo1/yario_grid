@@ -10,7 +10,7 @@ https://wowroms.com/en/roms/nintendo-entertainment-system/super-mario-bros./2375
 
 가상환경 생성
 
-    conda create -n yario python=3.8
+    conda create -n yario python=3.8.19
 
 가상환경 실행
 
