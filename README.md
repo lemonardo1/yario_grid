@@ -15,6 +15,10 @@ https://wowroms.com/en/roms/nintendo-entertainment-system/super-mario-bros./2375
 가상환경 실행
 
     conda activate yario
+
+클론
+
+    git clone https://github.com/f56e751/yario_grid.git
     
 라이브러리 설치
 
