@@ -20,7 +20,7 @@ https://wowroms.com/en/roms/nintendo-entertainment-system/super-mario-bros./2375
 
     git clone https://github.com/f56e751/yario_grid.git
     
-라이브러리 설치
+라이브러리 설치 (클론한 폴더에서 실행)
 
     pip install -r requirements.txt
 
