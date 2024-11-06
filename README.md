@@ -7,11 +7,28 @@ https://wowroms.com/en/roms/nintendo-entertainment-system/super-mario-bros./2375
 
 
 
+
+가상환경 생성
+
+    conda create -n yario python=3.8
+
+가상환경 실행
+
+    conda activate yario
+
+클론
+
+    git clone https://github.com/f56e751/yario_grid.git
+    
+라이브러리 설치 (클론한 폴더에서 실행)
+
+    pip install -r requirements.txt
+
+nes 파일 retro에 등록
+
     python -m retro.import "./Super Mario Bros. (World)"
 
 
-
-    conda create -n yario python=3.8
 
     
 위 명령어 실행 후 mario_retro_showgrid 실행
