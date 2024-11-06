@@ -23,14 +23,7 @@ import shutil
 # TODO 아이템(버섯들) 불러오는법
 
 
-def draw_border(painter: QPainter, size: Tuple[float, float]) -> None:
-    painter.setPen(QPen(Qt.black, 1, Qt.SolidLine))
-    painter.setBrush(QBrush(Qt.green, Qt.NoBrush))
-    painter.setRenderHint(QPainter.Antialiasing)
-    points = [(0, 0), (size[0], 0), (size[0], size[1]), (0, size[1])]
-    qpoints = [QPointF(point[0], point[1]) for point in points]
-    polygon = QPolygonF(qpoints)
-    painter.drawPolygon(polygon)
+
 
 
 class Visualizer(QtWidgets.QWidget):
@@ -43,10 +36,19 @@ class Visualizer(QtWidgets.QWidget):
         self.tiles = None
         self.enemies = None
         self._should_update = True
+    
+    def draw_border(self, painter: QPainter, size: Tuple[float, float]) -> None:
+        painter.setPen(QPen(Qt.black, 1, Qt.SolidLine))
+        painter.setBrush(QBrush(Qt.green, Qt.NoBrush))
+        painter.setRenderHint(QPainter.Antialiasing)
+        points = [(0, 0), (size[0], 0), (size[0], size[1]), (0, size[1])]
+        qpoints = [QPointF(point[0], point[1]) for point in points]
+        polygon = QPolygonF(qpoints)
+        painter.drawPolygon(polygon)
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        draw_border(painter, self.size)
+        self.draw_border(painter, self.size)
         # if self.ram is not None:
         self.draw_tiles(painter)
 

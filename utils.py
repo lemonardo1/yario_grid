@@ -877,6 +877,7 @@ class SMB(object):
     
     @classmethod
     def get_mario_state(cls, ram):
+        # 0: small, 1: big,  => 2 : firey
         mario_state = ram[cls.RAMLocations.Mario_Powerup_State.value]
         # print(f"mario_state: {mario_state}")
         return mario_state
