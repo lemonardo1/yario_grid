@@ -1,10 +1,11 @@
 https://github.com/Chrispresso/SuperMarioBros-AI 의 코드를 참고함
 
 
+nes 파일
 https://wowroms.com/en/disclaimer
 https://wowroms.com/en/roms/nintendo-entertainment-system/super-mario-bros./23755.html
 
-위에서 nes 파일 다운해서 현재 폴더에 압축풀기
+
 
     python -m retro.import "./Super Mario Bros. (World)"
 
