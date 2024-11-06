@@ -4,8 +4,6 @@
 from collections import namedtuple
 import numpy as np
 from enum import Enum, unique
-
-
 # TODO get_tile() 에서 지금은 StaticTileType만 반환하는데 DynamicTileType도 반환할 수 있도록 수정
 
 class YoloLabel(Enum):
