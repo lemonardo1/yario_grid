@@ -9,6 +9,11 @@ https://wowroms.com/en/roms/nintendo-entertainment-system/super-mario-bros./2375
 
     python -m retro.import "./Super Mario Bros. (World)"
 
+
+
+    conda create -n yario python=3.8
+
+    
 위 명령어 실행 후 mario_retro_showgrid 실행
 
 점프: space
