@@ -249,8 +249,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # SMB.get_item_type(ram)
         
         
-        if SMB.is_recordable(ram):
-            self.save_data(yolo_format)
+        # if SMB.is_recordable(ram):
+        #     self.save_data(yolo_format)
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
