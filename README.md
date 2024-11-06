@@ -6,7 +6,7 @@ https://wowroms.com/en/roms/nintendo-entertainment-system/super-mario-bros./2375
 
 위에서 nes 파일 다운해서 현재 폴더에 압축풀기
 
-python -m retro.import "/path/to/unzipped/super mario bros. (world)"
+    python -m retro.import "./Super Mario Bros. (World)"
 
 위 명령어 실행 후 mario_retro_showgrid 실행
 
