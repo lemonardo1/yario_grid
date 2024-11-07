@@ -44,7 +44,16 @@ nes 파일 retro에 등록
 
 
     
-위 명령어 실행 후 mario_retro_showgrid 실행
+위 명령어 실행 후 Main.py 실행
+
+    if __name__ == "__main__":
+        app = QApplication(sys.argv)  # QApplication 객체 생성
+        main = Main(human_mode=False)
+        main.run()
+
+human_mode=False -> agent play mode
+human_mode=True -> human play mode
+
 
 점프: space
 달리기: shift
