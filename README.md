@@ -25,8 +25,9 @@ https://wowroms.com/en/roms/nintendo-entertainment-system/super-mario-bros./2375
     pip install -r requirements.txt
 
 Yolo 설치
+https://docs.ultralytics.com/guides/conda-quickstart/#setting-up-a-conda-environment
 
-    conda install -c pytorch -c nvidia -c conda-forge pytorch torchvision pytorch-cuda=11.8 ultralytics
+    conda install -c conda-forge ultralytics
 
 nes 파일 retro에 등록
 
