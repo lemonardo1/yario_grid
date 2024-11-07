@@ -29,6 +29,11 @@ https://docs.ultralytics.com/guides/conda-quickstart/#setting-up-a-conda-environ
 
     conda install -c conda-forge ultralytics
 
+파이토치 설치(아래 링크에서 gpu나 cpu conda로 다운)
+https://pytorch.org/get-started/locally/
+
+
+
 nes 파일 retro에 등록
 
     python -m retro.import "./Super Mario Bros. (World)"
