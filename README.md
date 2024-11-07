@@ -51,7 +51,7 @@ nes 파일 retro에 등록
         main = Main(human_mode=False)
         main.run()
 
-human_mode=False -> agent play mode
+human_mode=False -> agent play mode \
 human_mode=True -> human play mode
 
 
