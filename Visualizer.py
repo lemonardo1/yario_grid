@@ -5,6 +5,7 @@ from PyQt5.QtCore import Qt, QPointF, QTimer, QRect
 from utils import SMB, EnemyType, StaticTileType, ColorMap, DynamicTileType, Item
 from typing import Tuple, List, Optional
 
+# TODO GridVisualizer 완성하기
 class GridVisualizer(QtWidgets.QWidget):
     def __init__(self, parent, size):
         super().__init__(parent)

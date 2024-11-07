@@ -1,6 +1,8 @@
 import numpy as np
 import pygame
 
+from network import PPOAgent
+
 
 class HumanInput():
     def __init__(self):
@@ -33,15 +35,36 @@ class HumanInput():
 
 
 class AgentInput():
-    def __init__(self):
+    def __init__(self, agent: PPOAgent):
         self.action = np.array([0] * 9)  # 액션 초기화
-        self.frame_counter = 0
+        self.agent = agent
+        # 0부터 순서대로 
+        # null, 아래(숙이기), 좌, 우, a=jump, b=달리기 or 공격, 우 + 점프, 좌 + 점프, 우 + 공격, 좌 + 공격, 우 + 공격 + 점프, 좌 + 공격 + 점프
+        # # Keys correspond with          B, NULL, SELECT, START, U, D, L, R, A
+        # # index                         0  1     2       3      4  5  6  7  8
+        self.action_map = { 0: np.array( [0, 1,    0,      0,     0, 0, 0, 0, 0], np.int8),
+                            1: np.array( [0, 0,    0,      0,     0, 1, 0, 0, 0], np.int8),
+                            2: np.array( [0, 0,    0,      0,     0, 0, 1, 0, 0], np.int8),
+                            3: np.array( [0, 0,    0,      0,     0, 0, 0, 1, 0], np.int8),
+                            4: np.array( [0, 0,    0,      0,     0, 0, 0, 0, 1], np.int8),
+                            5: np.array( [1, 0,    0,      0,     0, 0, 0, 0, 0], np.int8),
+                            6: np.array( [0, 0,    0,      0,     0, 0, 0, 1, 1], np.int8),
+                            7: np.array( [0, 0,    0,      0,     0, 0, 1, 0, 1], np.int8),
+                            8: np.array( [1, 0,    0,      0,     0, 0, 0, 1, 0], np.int8),
+                            9: np.array( [1, 0,    0,      0,     0, 0, 1, 0, 0], np.int8),
+                           10: np.array( [1, 0,    0,      0,     0, 0, 0, 1, 1], np.int8),
+                           11: np.array( [1, 0,    0,      0,     0, 0, 1, 0, 1], np.int8),
+                           }
 
-    def get_action(self):
-        # 여기에서 에이전트 로직을 구현 (예시)
-        # 매 호출 시마다 다른 액션을 반환할 수 있음
-        self.action = np.array([0] * 9)
-        self.frame_counter += 1
-        # self.action = (self.frame_counter // 100) % 2 * np.array([1, 0, 0, 0, 0, 0, 0, 0, 1])
-        self.action[7] = 1
+    def get_action(self, state):
+        
+        # action은 0 ~ num action - 1 의 범위의 정수
+        action, log_prob, value = self.agent.select_action(state)
+
+        self.action = self.action_map[action]
         return self.action
+    
+    def get_null_action(self):
+        action = np.array([0] * 9)
+        action[1] = 1
+        return action
