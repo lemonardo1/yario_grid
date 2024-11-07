@@ -32,6 +32,9 @@ https://docs.ultralytics.com/guides/conda-quickstart/#setting-up-a-conda-environ
 파이토치 설치(아래 링크에서 gpu나 cpu conda로 다운)
 https://pytorch.org/get-started/locally/
 
+파이토치 구버전
+https://pytorch.kr/get-started/previous-versions/
+
 
 
 nes 파일 retro에 등록
