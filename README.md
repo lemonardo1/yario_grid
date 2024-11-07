@@ -1,8 +1,8 @@
 https://github.com/Chrispresso/SuperMarioBros-AI 의 코드를 참고함
 
 
-nes 파일
-https://wowroms.com/en/disclaimer
+nes 파일 \
+https://wowroms.com/en/disclaimer \
 https://wowroms.com/en/roms/nintendo-entertainment-system/super-mario-bros./23755.html
 
 
@@ -24,15 +24,15 @@ https://wowroms.com/en/roms/nintendo-entertainment-system/super-mario-bros./2375
 
     pip install -r requirements.txt
 
-Yolo 설치
+Yolo 설치 \
 https://docs.ultralytics.com/guides/conda-quickstart/#setting-up-a-conda-environment
 
     conda install -c conda-forge ultralytics
 
-파이토치 설치(아래 링크에서 gpu나 cpu conda로 다운)
+파이토치 설치(아래 링크에서 gpu나 cpu conda로 다운) \
 https://pytorch.org/get-started/locally/
 
-파이토치 구버전
+파이토치 구버전 \
 https://pytorch.kr/get-started/previous-versions/
 
 
