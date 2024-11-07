@@ -24,6 +24,11 @@ https://wowroms.com/en/roms/nintendo-entertainment-system/super-mario-bros./2375
 
     pip install -r requirements.txt
 
+Yolo 설치
+https://docs.ultralytics.com/guides/conda-quickstart/#setting-up-a-conda-environment
+
+    conda install -c conda-forge ultralytics
+
 nes 파일 retro에 등록
 
     python -m retro.import "./Super Mario Bros. (World)"
