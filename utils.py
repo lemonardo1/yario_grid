@@ -793,6 +793,117 @@ class SMB(object):
 
         return yolo_format
     
+
+    @classmethod
+    def get_yolo_format_for_game(cls, ram):
+        # yolo train을 위한 위치조정 제거 
+        yolo_format = {} # {object_name: [[x,y], [x_length, y_length]], [[x,y], [x_length, y_length]] } 
+        def make_key_for_dict(dict: dict, key):
+            if key not in dict:
+                dict[key] = []
+        
+        x_unit_length = 1/16
+        y_unit_length = 1/15
+
+        x_start = cls.get_x_start(ram)
+        res = x_start % 16
+        if res <= 8:
+            x_start_adjust = x_start + (16 - res) # x_start_adjust는 잘리지 않고 블록 중간에서 시작하는 x 좌표
+        else:
+            x_start_adjust = x_start + (32 - res)
+        
+        y_start_adjust = 18
+        y_iter_num = 13
+
+        if res == 8:
+            x_iter_num = 15
+        else:
+            x_iter_num = 14
+
+        x_start_adjust += 2
+        for i in range(y_iter_num):
+            for j in range(x_iter_num):
+                x = x_start_adjust + j * 17
+                y = y_start_adjust + i * 17
+
+
+                tile = cls.get_tile(x, y, ram)
+                # tile_name = tile.name
+                try:
+                    tile_name = tile.name
+                except AttributeError:
+                    print("Error accessing tile.name. Tile is:", tile)
+                    tile_name = "Unknown"  # 에러가 발생했을 때 기본값 설정 (필요 시)
+
+                if tile_name == "Empty": # empty는 학습 X
+                    continue
+
+                make_key_for_dict(yolo_format, tile_name)
+                x_on_screen = x - x_start
+                y_on_screen = y
+
+                x_yolo = x_on_screen / 256
+                y_yolo = (y_on_screen) / 240 # 확인해보니 위에 8픽셀은 빈 공간임
+                yolo_format[tile_name].append([[x_yolo,y_yolo], [x_unit_length, y_unit_length]])
+
+        mario_x, mario_y = cls.get_mario_location_on_screen(ram)
+        mario_x = (mario_x) / 256
+        mario_y = (mario_y + 8) / 240
+        # mario_y = (mario_y + 16) / 240
+        mario_state = cls.get_mario_state(ram) # 0: small, 1: big,  => 2 : firey
+        
+        if mario_state == 0:
+            make_key_for_dict(yolo_format, "Mario_small")
+            yolo_format["Mario_small"].append([[mario_x, mario_y],[x_unit_length, y_unit_length]])
+        elif mario_state == 1:
+            make_key_for_dict(yolo_format, "Mario_big")
+            yolo_format["Mario_big"].append([[mario_x, mario_y - 8 / 240],[x_unit_length, y_unit_length * 2]])
+        else:
+            make_key_for_dict(yolo_format, "Mario_fire")
+            yolo_format["Mario_fire"].append([[mario_x, mario_y - 8 / 240],[x_unit_length, y_unit_length * 2]])
+
+        
+
+        # print(mario_x, mario_y)
+        enemies = cls.get_enemy_locations(ram)
+        for enemy in enemies:
+            make_key_for_dict(yolo_format, "Enemy")
+            # ex = enemy.location.x - x_start + 8
+            ex = enemy.location.x - x_start
+            ey = enemy.location.y + 8
+            x_yolo = ex / 256
+            y_yolo = ey / 240
+            if x_yolo > 0.98 or x_yolo < 0.02:
+                continue
+            yolo_format["Enemy"].append([[x_yolo, y_yolo],[x_unit_length * 1.2, y_unit_length * 1.2]])
+
+        # if 'Enemy' in yolo_format:
+        #     print(f"enemy num is {len(yolo_format['Enemy'])}")
+
+        item = cls.get_item_pos(ram)
+        if item != None:
+            x_yolo = item.x / 256
+            y_yolo = (item.y + 16) / 240
+            # y_yolo = (item.y) / 240
+
+            item_type = cls.get_item_type(ram) # 0 - Mushroom, 1 - Flower, 2 - Star, 3 - 1up
+            item_name = Item.get_item_name_from_value(item_type).name # Mushroom, Flower, Star, LifeUp
+            make_key_for_dict(yolo_format, item_name)
+            yolo_format[item_name].append([[x_yolo, y_yolo],[x_unit_length, y_unit_length]])
+
+
+
+        for key in list(yolo_format.keys()):  # 원래 키를 수정해야 하므로 list로 복사해서 사용
+            label_value = YoloLabel.get_value_from_name(key)
+            if label_value is not None:
+                yolo_format[label_value] = yolo_format.pop(key)  # 기존 키를 Enum 값으로 변경
+            else:
+                raise KeyError(f"The key '{key}' does not exist in YoloLabel Enum.")
+
+
+
+        return yolo_format
+
     @classmethod
     def get_yolo_format_unit_test(cls, ram):
         yolo_format = {} # {object_name: [[x,y], [x_length, y_length]], [[x,y], [x_length, y_length]] } 
@@ -865,15 +976,32 @@ class SMB(object):
         # 0x0B - Dying
         # 0x0C - Transforming to Fire Mario (cannot move)
         player_state = ram[cls.RAMLocations.Player_State.value]
-        
+        # if player_state != 8:
+        #     print(f"player_state: {player_state}")
+
         if player_state in [0, 0x0B, 0x06, 0x07, 0x03, 0x05, 0x02, 0x04]:
             # 로딩중, 죽을때 제외함
             return False
-        
-        if player_state != 8:
-            print(f"player_state: {player_state}")
-        
+
         return True
+    
+    @classmethod
+    def is_world_cleared(cls, ram):
+        player_state = ram[cls.RAMLocations.Player_State.value]
+        if player_state == 4:
+            return True
+        else:
+            return False
+
+    
+    @classmethod
+    def is_dead(cls, ram):
+        player_state = ram[cls.RAMLocations.Player_State.value]
+        if player_state == 0x0B:
+            return True
+        else:
+            return False
+
     
     @classmethod
     def get_mario_state(cls, ram):

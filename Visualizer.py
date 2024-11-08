@@ -34,18 +34,55 @@ class GridVisualizer(QtWidgets.QWidget):
 
         painter.end()
 
+
     def draw_tiles(self, painter: QPainter):
+        if not self.tiles:
+            return
+
+        # Iterate only over existing tile locations stored in self.tiles
+        for loc, tile in self.tiles.items():
+            col, row = loc  # loc is expected to be a tuple (row, col)
+
+            painter.setPen(QPen(Qt.black, 1, Qt.SolidLine))
+            painter.setBrush(QBrush(Qt.white, Qt.SolidPattern))
+            x_start = 5 + (self.tile_width * col) + self.x_offset
+            y_start = 5 + (self.tile_height * row)
+
+            if isinstance(tile, (StaticTileType, DynamicTileType, EnemyType, Item)):
+                if hasattr(ColorMap, 'has_name') and ColorMap.has_name(tile.name):
+                    rgb = ColorMap[tile.name].value
+                    color = QColor(*rgb)
+                else:
+                    # If no specific color is defined, default to black
+                    rgb = (0, 0, 0)
+                    color = QColor(*rgb)
+                painter.setBrush(QBrush(color))
+            else:
+                # Handle other cases or use a default case if needed
+                pass
+
+            painter.drawRect(x_start, y_start, self.tile_width, self.tile_height)
+
+
+    def draw_tiles_old(self, painter: QPainter):
         
         if not self.tiles:
             return
         for row in range(15):
             for col in range(16):
+                loc = (row, col)
+                
+
+                if loc not in self.tiles:
+                    continue
+
+
+                tile = self.tiles[loc]
                 painter.setPen(QPen(Qt.black, 1, Qt.SolidLine))
                 painter.setBrush(QBrush(Qt.white, Qt.SolidPattern))
                 x_start = 5 + (self.tile_width * col) + self.x_offset
                 y_start = 5 + (self.tile_height * row)
-                loc = (row, col)
-                tile = self.tiles[loc]
+                
 
                 if isinstance(tile, (StaticTileType, DynamicTileType, EnemyType, Item)):
                     # if tile.name == 'Empty' or tile.name == 'Fake':
@@ -66,6 +103,16 @@ class GridVisualizer(QtWidgets.QWidget):
         self.tiles = tiles
         self.update()
 
+class GridWindow(QtWidgets.QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.visualizer = GridVisualizer(self, size=(500, 300))
+        self.setCentralWidget(self.visualizer)
+        self.resize(800, 600)
+
+    def update_tiles(self, tiles):
+        # Example tiles update
+        self.visualizer.update_tiles(tiles)
 
 
 

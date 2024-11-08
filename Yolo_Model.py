@@ -4,7 +4,8 @@ import torch
 
 from PIL import Image
 from ultralytics import YOLO
-
+from tensor import Tensor
+from yolo_class_mapping import ClassMapping
 
 
 class Yolo_Model():
@@ -24,7 +25,6 @@ class Yolo_Model():
 
         self.model = YOLO("best.pt")
         self.frame_count = 0
-        self.frame_base = 4 # 이 프레임마다 텐서를 반환함
 
         self.grid_size = self.x_grid_num * self.y_grid_num
         # 마리오 상태 포함 텐서 정의 (4, 1 + num_classes * grid_size)
@@ -33,28 +33,12 @@ class Yolo_Model():
         self.mario_state_num = 3
         self.all_tensors = torch.zeros((4, self.mario_state_num + self.num_classes * self.grid_size), dtype=torch.float)
         self.is_logging = False
+        self.tensor = Tensor()
         
-        # self.class_mapping
-        # 0: 마리오
-        # 1: 적
-        # 2: 아이템, 코인블록, 토관, 깃발, 깰 수 있는 블록
-        # 3: 밟을 수 있는 블록
 
-        self.class_mapping = {
-            0 : [0,1,2],
-            1 : [3],
-            2 : [4,5,6,7,9,10,13,14,15,16,18,19],
-            3 : [8,9,10,11,12,13,16,17,19]
-        }
+        self.class_mapping = ClassMapping()
+        self.tiles = {}
 
-    def get_class_mapping_id(self, cls):
-        group_id = None
-        for key, class_list in self.class_mapping.items():
-            if cls in class_list:
-                group_id = key
-                break
-        
-        return group_id
 
     def set_logging(self):
         self.is_logging = True
@@ -63,27 +47,20 @@ class Yolo_Model():
         self.is_logging = False
 
     def get_tensor(self, img: Image, mario_state: int):
-        self.frame_count += 1
-
+        # self.frame_count += 1
+        self.tiles = {}
         with torch.no_grad():  # 연산을 추적하지 않도록 설정
-            results = self.model(img, verbose=self.is_logging)
+            self.results = self.model(img, verbose=self.is_logging)
 
-        frame_tensor = torch.zeros((self.mario_state_num + self.num_classes * self.grid_size,), dtype=torch.float)
-        # frame_tensor = np.zeros((1 + self.num_classes * self.grid_size,), dtype=int)
-        if mario_state > 2: # 2보다 큰 경우는 없는거로 취급 0: 작은 마리오, 1: 큰 마리오, 2: 불 마리오
-            mario_state = 2
-        frame_tensor[mario_state] = 1  # 마리오 상태 저장
-
-
-        for result in results:
+        for result in self.results:
             for box in result.boxes:
                 x1 = box.xyxy[:,0]
                 x2 = box.xyxy[:,2]
                 y1 = box.xyxy[:,1]
                 y2 = box.xyxy[:,3]
-                cls = box.cls
+                class_id = box.cls
 
-                group_id = self.get_class_mapping_id(int(cls))
+                group_id = self.class_mapping.get_group_id(int(class_id))
                 
                 # 박스의 너비와 높이 계산
                 widths = x2 - x1
@@ -98,33 +75,27 @@ class Yolo_Model():
                 y_center = (y1 + y2) / 2.0
                 grid_x = min(max(int(x_center / self.x_unit_length), 0), self.x_grid_num - 1) # 0 ~ self.x_grid_num - 1 사이의 값
                 grid_y = min(max(int(y_center / self.y_unit_length), 0), self.y_grid_num - 1) # 0 ~ self.y_grid_num - 1 사이의 값
-                grid_1d_index = grid_x + grid_y * self.x_grid_num
+                
+                if class_id == 0:
+                    grid_y = max(grid_y - 1, 0)
 
+                self.tiles[(grid_x, grid_y)] = class_id
 
-                index = self.mario_state_num + group_id * self.grid_size + grid_1d_index
-                frame_tensor[index] = 1  # 해당 위치에 1을 채워넣음
+                self.tensor.update(mario_state, grid_x, grid_y, group_id, self.frame_count)
 
-                # y 크기가 2인 마리오이면 해당 칸보다 한칸 더 위도 채움
-                if y_grid_sizes == 2:
-                    index = index + max(grid_1d_index - 1, 0) * self.x_grid_num
-                    frame_tensor[index] = 1
-            
-        self.all_tensors[self.frame_count] = frame_tensor
         self.frame_count += 1
 
         # self.frame_base 개의 프레임을 입력받은 후에 1개의 action을 취함
-        if self.frame_count == self.frame_base:
-            # start = time.time()/
-            final_tensor = self.all_tensors.clone()
-            final_tensor = final_tensor.view(-1)  # 모든 요소를 1차원으로 변환
-            self.all_tensors.fill_(0)
-            # self.all_tensors = np.zeros((4, 1 + self.num_classes * self.grid_size), dtype=int) # 초기화
+        if self.frame_count == self.tensor.get_base_frame_count():
             self.frame_count = 0
-            # end = time.time()
-            # print(f"tensor transform time: {end-start}")
-            return final_tensor
 
-        return None
+        # return None
+        return self.tensor.get_tensor()
+
+    def get_grid_visualize_tile(self):
+        # get_tensor 실행 후 실행되어야 함
+        return self.tiles
+
 
 
     ########################## 이 아래는 테스트용 코드 ###############################

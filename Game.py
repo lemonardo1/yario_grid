@@ -4,6 +4,9 @@ import numpy as np
 from utils import SMB
 from PIL import Image
 from Visualizer import GameFrameVisualizer
+from tensor import Tensor
+from yolo_class_mapping import ClassMapping
+import torch
 
 class Game():
     def __init__(self,x_pixel_num,y_pixel_num):
@@ -27,7 +30,14 @@ class Game():
 
         self.gameFrameVisualizer = GameFrameVisualizer()
         self.running = True
-    
+
+        self.frame_count = 0 # 이 값을 기준으로 텐서 반환 시점을 정함
+        self.tile_info = {}
+        self.elapsed_frame_return_tile_info = 0 # get_tile_info가 호출될 때 이 값에 self.elapsed_frame를 대입함
+        self.elapsed_frame_num = 0 # update_game이 호출될 때마다 1 증가함
+        self.tensor = Tensor()
+        self.class_mapping = ClassMapping()
+
     def stop(self):
         self.running = False
 
@@ -43,6 +53,7 @@ class Game():
 
         # 게임 환경 업데이트
         obs, rew, done, info = self.env.step(action)
+        self.elapsed_frame_num += 1
         if done:
             self.env.reset()
 
@@ -54,6 +65,24 @@ class Game():
         # frame = pygame.transform.scale(frame, (self.x_pixel_num, self.y_pixel_num))  # 스케일링
         # self.game_screen.blit(frame, (0, 0))
         # pygame.display.flip()
+
+    def update_game_human_mode(self, action):
+        if not isinstance(action, np.ndarray) or action.shape != (9,):
+            raise ValueError("The action must be a numpy array of shape (9,).")
+        # 게임 환경 업데이트
+        obs, rew, done, info = self.env.step(action)
+        self.elapsed_frame_num += 1
+        if done:
+            self.env.reset()
+
+        # 게임 화면 업데이트
+        self.game_screen.blit(pygame.surfarray.make_surface(self.env.render(mode='rgb_array').swapaxes(0, 1)), (0, 0))
+
+        # 게임 화면 스케일링
+        frame = pygame.surfarray.make_surface(self.env.render(mode='rgb_array').swapaxes(0, 1))
+        frame = pygame.transform.scale(frame, (self.x_pixel_num, self.y_pixel_num))  # 스케일링
+        self.game_screen.blit(frame, (0, 0))
+        pygame.display.flip()
 
     def run(self):
         # current_time = pygame.time.get_ticks()
@@ -82,9 +111,32 @@ class Game():
         self.is_new_action_received = True
         self.new_action = action
         
+    # # 게임을 시작으로 되돌리는 함수
+    def reset(self):
+        self.env.reset()
+
+        self.elapsed_frame_num = 0
+        self.frame_count = 0
+        self.tile_info = {}
+        self.elapsed_frame_return_tile_info = 0
+
+        self.is_new_action_received = False
+        self.new_action = None
 
 
-    def is_recordable(self):
+    # # 마리오가 죽었는지 여부를 반환하는 함수
+    def is_dead(self):  
+        ram = self.env.get_ram()
+        return SMB.is_dead(ram)
+    
+    # # 1-1 월드가 클리어됐는지 여부를 반환하는 함수
+    def is_world_cleared(self):
+        ram = self.env.get_ram()
+        # print
+        return SMB.is_world_cleared(ram)
+
+    # agent의 action이 입력 가능한지 여부
+    def is_playable(self):
         ram = self.env.get_ram()
         return SMB.is_recordable(ram)
     
@@ -106,3 +158,74 @@ class Game():
         return pil_image
     
 
+    # ram 정보를 이용해 grid로 출력하기 위해 타일 정보를 반환하는 함수
+    def get_tile_info(self):
+        
+        # # 중복되는 연산을 줄이고자 같은 프레임에 이 함수가 두 번 호출되면 이전에 저장한 값을 반환함
+        # if self.elapsed_frame_return_tile_info ==  self.elapsed_frame_num:
+        #     return self.tile_info
+
+
+        self.elapsed_frame_return_tile_info = self.elapsed_frame_num
+        ram = self.env.get_ram()
+        # yolo_format = SMB.get_yolo_format_new(ram)
+        yolo_format = SMB.get_yolo_format_for_game(ram)
+        self.tile_info = {}
+
+        base_x_unit_length = 16 / 256
+        base_y_unit_length = 16 / 240
+
+        grid_w = 16
+        grid_h = 15
+
+        for label_value, coordinates in yolo_format.items():
+            for coordinate in coordinates:
+                x_yolo, y_yolo = coordinate[0] # 0~1 사이의 값
+                x_unit_length, y_unit_length = coordinate[1]
+
+                x_size = round(x_unit_length / base_x_unit_length)
+                y_size = round(y_unit_length / base_y_unit_length)
+
+
+                grid_x = min(max(int(x_yolo / base_x_unit_length), 0), grid_w - 1)
+                grid_y = min(max(int(y_yolo / base_y_unit_length), 0), grid_h - 1)
+                
+                loc = (grid_x, grid_y)
+                self.tile_info[loc] = label_value
+
+                if grid_y == 2:
+                    new_loc = (grid_x, grid_y-1)
+                    self.tile_info[new_loc] = label_value
+
+
+
+        return self.tile_info
+
+    # network에 입력할 tensor를 반환하는 함수
+    # base_frame_count만큼 프레임이 지나갔을때 반환함
+    def get_tensor(self):
+        mario_state = self.get_mario_state()
+        tile_info = self.get_tile_info()
+        grid_w = 16
+        grid_h = 15
+        for key, value in tile_info.items():
+            grid_x, grid_y = key
+            class_id = value
+
+            grid_x = int(grid_x * grid_w)
+            grid_y = int(grid_y * grid_h)
+
+            grid_x = min(max(grid_x, 0), grid_w - 1)
+            grid_y = min(max(grid_y, 0), grid_h - 1)
+
+            group_id = self.class_mapping.get_group_id(class_id)
+            # print(group_id)
+            self.tensor.update(mario_state, grid_x, grid_y, group_id, self.frame_count)
+
+
+        self.frame_count += 1
+
+        if self.frame_count == self.tensor.get_base_frame_count():
+            self.frame_count = 0
+
+        return self.tensor.get_tensor()
