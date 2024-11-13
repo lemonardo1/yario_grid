@@ -823,8 +823,11 @@ class SMB(object):
         x_start_adjust += 2
         for i in range(y_iter_num):
             for j in range(x_iter_num):
-                x = x_start_adjust + j * 17
-                y = y_start_adjust + i * 17
+                # x = x_start_adjust + j * 17
+                # y = y_start_adjust + i * 17
+
+                x = x_start_adjust + j * 16
+                y = y_start_adjust + i * 16
 
 
                 tile = cls.get_tile(x, y, ram)
@@ -903,6 +906,9 @@ class SMB(object):
 
 
         return yolo_format
+    
+
+        
 
     @classmethod
     def get_yolo_format_unit_test(cls, ram):

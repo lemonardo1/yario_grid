@@ -4,6 +4,7 @@ from PyQt5.QtGui import QPainter, QBrush, QPen, QPolygonF, QColor
 from PyQt5.QtCore import Qt, QPointF, QTimer, QRect
 from utils import SMB, EnemyType, StaticTileType, ColorMap, DynamicTileType, Item
 from typing import Tuple, List, Optional
+from yolo_class_mapping import ClassMapping
 
 # TODO GridVisualizer 완성하기
 class GridVisualizer(QtWidgets.QWidget):
@@ -16,6 +17,7 @@ class GridVisualizer(QtWidgets.QWidget):
         self.tiles = None
         self.enemies = None
         self._should_update = True
+        self.classMapping = ClassMapping()
     
     def draw_border(self, painter: QPainter, size: Tuple[float, float]) -> None:
         painter.setPen(QPen(Qt.black, 1, Qt.SolidLine))
@@ -40,22 +42,17 @@ class GridVisualizer(QtWidgets.QWidget):
             return
 
         # Iterate only over existing tile locations stored in self.tiles
-        for loc, tile in self.tiles.items():
+        for loc, class_id in self.tiles.items():
             col, row = loc  # loc is expected to be a tuple (row, col)
 
             painter.setPen(QPen(Qt.black, 1, Qt.SolidLine))
             painter.setBrush(QBrush(Qt.white, Qt.SolidPattern))
             x_start = 5 + (self.tile_width * col) + self.x_offset
             y_start = 5 + (self.tile_height * row)
-
-            if isinstance(tile, (StaticTileType, DynamicTileType, EnemyType, Item)):
-                if hasattr(ColorMap, 'has_name') and ColorMap.has_name(tile.name):
-                    rgb = ColorMap[tile.name].value
-                    color = QColor(*rgb)
-                else:
-                    # If no specific color is defined, default to black
-                    rgb = (0, 0, 0)
-                    color = QColor(*rgb)
+            group_id = self.classMapping.get_group_id(class_id)
+            if group_id:
+                rgb = self.classMapping.get_color_by_group_id(group_id)
+                color = QColor(*rgb)
                 painter.setBrush(QBrush(color))
             else:
                 # Handle other cases or use a default case if needed

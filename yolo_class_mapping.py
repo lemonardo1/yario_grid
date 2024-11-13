@@ -12,6 +12,13 @@ class ClassMapping():
             3 : [8,9,10,11,12,13,16,17,19]
         }
 
+        self.rgb_mapping = {
+            0: (100,100,100),
+            1: (255,0,0),
+            2: (0,255,0),
+            3: (0,0,255),
+        }
+
 
     def get_group_id(self, class_id):
         group_id = None
@@ -21,5 +28,12 @@ class ClassMapping():
                 break
         
         return group_id
+    
+    def get_color_by_group_id(self, group_id):
+        return self.rgb_mapping[group_id]
+
+    # def get_color_by_class_id(self, class_id):
+    #     group_id = self.get_group_id(class_id)
+    #     return self.rgb_mapping[group_id]
     
         

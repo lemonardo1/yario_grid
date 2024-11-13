@@ -197,9 +197,9 @@ class Game():
                     new_loc = (grid_x, grid_y-1)
                     self.tile_info[new_loc] = label_value
 
-
-
         return self.tile_info
+    
+
 
     # network에 입력할 tensor를 반환하는 함수
     # base_frame_count만큼 프레임이 지나갔을때 반환함
