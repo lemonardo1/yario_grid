@@ -7,18 +7,21 @@ from Visualizer import GameFrameVisualizer
 from tensor import Tensor
 from yolo_class_mapping import ClassMapping
 import torch
+import time
 
 class Game():
-    def __init__(self,x_pixel_num,y_pixel_num):
+    def __init__(self, x_pixel_num, y_pixel_num, visualize):
         # self.env = retro.make(game='SuperMarioBros-Nes', state = 'Level3-1')
         self.env = retro.make(game='SuperMarioBros-Nes', state = 'Level1-1')
         self.env.reset()
         
         # Pygame 설정
         pygame.init()
-        self.x_pixel_num = 256
-        self.y_pixel_num = 240
-        self.game_screen = pygame.display.set_mode((self.x_pixel_num, self.y_pixel_num))
+        self.x_pixel_num = x_pixel_num
+        self.y_pixel_num = y_pixel_num
+        self.visualize = visualize
+        if self.visualize:
+            self.game_screen = pygame.display.set_mode((self.x_pixel_num, self.y_pixel_num))
         # self.game_screen = pygame.display.set_mode((512, 480))
         self.clock = pygame.time.Clock()
 
@@ -29,6 +32,8 @@ class Game():
         self.null_action = np.array( [0, 1,    0,      0,     0, 0, 0, 0, 0], np.int8)
 
         self.gameFrameVisualizer = GameFrameVisualizer()
+        if self.visualize:
+            self.gameFrameVisualizer.set_game_screen()
         self.running = True
 
         self.frame_count = 0 # 이 값을 기준으로 텐서 반환 시점을 정함
@@ -37,6 +42,24 @@ class Game():
         self.elapsed_frame_num = 0 # update_game이 호출될 때마다 1 증가함
         self.tensor = Tensor()
         self.class_mapping = ClassMapping()
+
+        self.previous_action = None
+        self.prev_mario_state = 0
+        self.prev_score = 0
+        self.prev_mario_x = 0
+        self.action_map = { 0: np.array( [0, 1,    0,      0,     0, 0, 0, 0, 0], np.int8),
+                    1: np.array( [0, 0,    0,      0,     0, 1, 0, 0, 0], np.int8),
+                    2: np.array( [0, 0,    0,      0,     0, 0, 1, 0, 0], np.int8),
+                    3: np.array( [0, 0,    0,      0,     0, 0, 0, 1, 0], np.int8),
+                    4: np.array( [0, 0,    0,      0,     0, 0, 0, 0, 1], np.int8),
+                    5: np.array( [1, 0,    0,      0,     0, 0, 0, 0, 0], np.int8),
+                    6: np.array( [0, 0,    0,      0,     0, 0, 0, 1, 1], np.int8),
+                    7: np.array( [0, 0,    0,      0,     0, 0, 1, 0, 1], np.int8),
+                    8: np.array( [1, 0,    0,      0,     0, 0, 0, 1, 0], np.int8),
+                    9: np.array( [1, 0,    0,      0,     0, 0, 1, 0, 0], np.int8),
+                    10: np.array( [1, 0,    0,      0,     0, 0, 0, 1, 1], np.int8),
+                    11: np.array( [1, 0,    0,      0,     0, 0, 1, 0, 1], np.int8),
+                    }
 
     def stop(self):
         self.running = False
@@ -57,7 +80,57 @@ class Game():
         if done:
             self.env.reset()
 
-        # 게임 화면 업데이트
+        # self.visualize_frame()
+
+    def visualize_frame(self):
+        if self.visualize:
+            rendered_frame = self.env.render(mode='rgb_array').swapaxes(0, 1)
+            frame = pygame.surfarray.make_surface(rendered_frame)
+            frame_scaled = pygame.transform.scale(frame, (self.x_pixel_num, self.y_pixel_num))
+
+            self.game_screen.blit(frame_scaled, (0, 0))
+            pygame.display.flip()
+            # self.game_screen.blit(pygame.surfarray.make_surface(self.env.render(mode='rgb_array').swapaxes(0, 1)), (0, 0))
+            # # 게임 화면 스케일링
+            # frame = pygame.surfarray.make_surface(self.env.render(mode='rgb_array').swapaxes(0, 1))
+            # frame = pygame.transform.scale(frame, (self.x_pixel_num, self.y_pixel_num))  # 스케일링
+            # self.game_screen.blit(frame, (0, 0))
+            # pygame.display.flip()
+
+
+    def update_game_human_mode(self, action):
+        if not isinstance(action, np.ndarray) or action.shape != (9,):
+            raise ValueError("The action must be a numpy array of shape (9,).")
+        # 게임 환경 업데이트
+        obs, rew, done, info = self.env.step(action)
+        # print(f"obs: {obs}")
+        # print(f"rew: {rew}")
+        # print(f"done: {done}")
+        self.elapsed_frame_num += 1
+        if done:
+            self.env.reset()
+
+        self.visualize_frame()
+
+
+    # train할 때 게임 환경을 업데이트하는 함수
+    def step(self, action):
+        if not isinstance(action, np.ndarray) or action.shape != (9,):
+            raise ValueError("The action must be a numpy array of shape (9,).")
+        # 게임 환경 업데이트
+        obs, rew, done, info = self.env.step(action)
+        # rew 값이 계속 증가하지 않고 0, 1, 2 값만 반환함 -> 
+        # reward = 
+
+        reward = self.get_reward()
+        is_world_cleared = self.is_world_cleared()
+        is_dead = self.is_dead()
+
+        # 월드를 클리어했거나 죽었으면 시작지점으로 게임을 초기화
+        if is_world_cleared or is_dead:
+            self.reset()
+
+        # # 게임 화면 업데이트
         # self.game_screen.blit(pygame.surfarray.make_surface(self.env.render(mode='rgb_array').swapaxes(0, 1)), (0, 0))
 
         # # 게임 화면 스케일링
@@ -65,24 +138,50 @@ class Game():
         # frame = pygame.transform.scale(frame, (self.x_pixel_num, self.y_pixel_num))  # 스케일링
         # self.game_screen.blit(frame, (0, 0))
         # pygame.display.flip()
+        self.visualize_frame()
 
-    def update_game_human_mode(self, action):
-        if not isinstance(action, np.ndarray) or action.shape != (9,):
-            raise ValueError("The action must be a numpy array of shape (9,).")
-        # 게임 환경 업데이트
-        obs, rew, done, info = self.env.step(action)
-        self.elapsed_frame_num += 1
-        if done:
-            self.env.reset()
 
-        # 게임 화면 업데이트
-        self.game_screen.blit(pygame.surfarray.make_surface(self.env.render(mode='rgb_array').swapaxes(0, 1)), (0, 0))
 
-        # 게임 화면 스케일링
-        frame = pygame.surfarray.make_surface(self.env.render(mode='rgb_array').swapaxes(0, 1))
-        frame = pygame.transform.scale(frame, (self.x_pixel_num, self.y_pixel_num))  # 스케일링
-        self.game_screen.blit(frame, (0, 0))
-        pygame.display.flip()
+        return reward, is_world_cleared, None
+        ###########################################
+    
+    def get_reward(self):
+        ram = self.env.get_ram()
+        reward = 0
+        if self.is_dead():
+            reward -= 10000
+
+        if self.is_get_item():
+            reward += 1000
+
+        current_score = self.get_mario_score()   
+        score_diff = current_score - self.prev_score
+        self.prev_score = current_score
+
+        reward += score_diff
+
+        # 스크린이 시작하는 지점의 값
+        # 끝났을때가 3040
+        mario_position = SMB.get_mario_location_in_level(ram)
+        position_diff = mario_position.x - self.prev_mario_x
+        # print(f"position_diff: {position_diff}")
+        reward += (position_diff) * 10
+
+        if position_diff <= 0:
+            reward -= 50
+        self.prev_mario_x = mario_position.x
+        # print(f"reward: {reward}")
+        return reward
+    
+    # 마리오가 아이템을 먹은 시점에 true 반환
+    def is_get_item(self):
+        mario_state = self.get_mario_state()
+        if mario_state > self.prev_mario_state:
+            self.prev_mario_state = mario_state
+            return True
+        else:
+            self.prev_mario_state = mario_state
+            return False
 
     def run(self):
         # current_time = pygame.time.get_ticks()
@@ -100,16 +199,17 @@ class Game():
             else:
                 self.update_game(self.null_action)
             
-            
             # last_update_time = current_time
 
-            self.gameFrameVisualizer.visualize(self.get_frame())
+            if self.visualize:
+                self.gameFrameVisualizer.visualize(self.get_frame())
             self.clock.tick(self.fps)
 
     def receive_action(self, action):
         # print("new action!!!")
         self.is_new_action_received = True
         self.new_action = action
+
         
     # # 게임을 시작으로 되돌리는 함수
     def reset(self):
@@ -122,6 +222,16 @@ class Game():
 
         self.is_new_action_received = False
         self.new_action = None
+
+        self.prev_score = 0
+        self.prev_mario_state = 0
+        self.prev_mario_x = 0
+
+
+
+    def get_mario_score(self):
+        ram = self.env.get_ram()
+        return SMB.get_mario_score(ram)
 
 
     # # 마리오가 죽었는지 여부를 반환하는 함수

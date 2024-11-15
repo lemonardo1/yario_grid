@@ -56,14 +56,33 @@ class AgentInput():
                            11: np.array( [1, 0,    0,      0,     0, 0, 1, 0, 1], np.int8),
                            }
 
+
     def get_action(self, state):
         
         # action은 0 ~ num action - 1 의 범위의 정수
-        action, log_prob, value = self.agent.select_action(state)
+        action, action_tensor, log_prob, value = self.agent.select_action(state)
 
         self.action = self.action_map[action]
         return self.action
     
+    def get_action_np(self, action):
+        for key, value in self.action_map.items():
+            if key == action:
+                action_np = value
+                return action_np
+
+        raise ValueError(f"Action '{action}' not found in action map.")
+    
+
+    # 넘파이 형식을 받아 int 형식의 action을 반환
+    def get_action_int(self, action):
+        for key, value in self.action_map.items():
+            if np.array_equal(value, action):
+                return key
+
+        raise ValueError(f"Action '{action}' not found in action map.")
+    
+
     def get_null_action(self):
         action = np.array([0] * 9)
         action[1] = 1

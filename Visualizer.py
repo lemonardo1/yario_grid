@@ -120,9 +120,11 @@ class GameFrameVisualizer(QtWidgets.QMainWindow):
         pygame.init()
         self.x_pixel_num = 256
         self.y_pixel_num = 240
-        self.game_screen = pygame.display.set_mode((self.x_pixel_num, self.y_pixel_num))
+        self.game_screen = None
         # self.game_screen = pygame.display.set_mode((512, 480))
 
+    def set_game_screen(self):
+        self.game_screen = pygame.display.set_mode((self.x_pixel_num, self.y_pixel_num))
 
 
     def visualize(self, frame: pygame.surface):
