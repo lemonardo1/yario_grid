@@ -43,7 +43,7 @@ class Game():
         self.tensor = Tensor()
         self.class_mapping = ClassMapping()
 
-        self.previous_action = None
+        self.previous_action = np.array( [0, 1,    0,      0,     0, 0, 0, 0, 0], np.int8)
         self.prev_mario_state = 0
         self.prev_score = 0
         self.prev_mario_x = 0
@@ -196,8 +196,10 @@ class Game():
             if self.is_new_action_received:
                 self.update_game(self.new_action)
                 self.is_new_action_received = False
+                self.previous_action = self.new_action
             else:
-                self.update_game(self.null_action)
+                # self.update_game(self.null_action)
+                self.update_game(self.previous_action)
             
             # last_update_time = current_time
 

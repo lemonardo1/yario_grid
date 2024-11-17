@@ -87,3 +87,8 @@ class AgentInput():
         action = np.array([0] * 9)
         action[1] = 1
         return action
+    
+    def get_jump_action(self):
+        action = np.array([0] * 9)
+        action[8] = 1
+        return action

@@ -162,13 +162,16 @@ class Main:
                         prev_action_one_hot[prev_action_int] = 1
                         full_state = torch.cat([tensor, prev_action_one_hot])
                         action = self.input_device.get_action(full_state)
-                        # print(action)
+                        
+                        # action = self.input_device.get_jump_action()
+                        print(action)
                         self.game.receive_action(action)
                         last_update_time = current_time
                         self.prev_action = action
 
                     else:
                         # print('tensor is none')
+                        # print(self.prev_action)
                         self.game.receive_action(self.prev_action)
                         last_update_time = current_time
 
@@ -216,7 +219,7 @@ if __name__ == "__main__":
     #    use_yolo가 true이면 yolo에서 인식된 결과를 출력
     #    use_yolo가 false이면 게임에서 직접 불러온 결과를 출력
     
-    main = Main(human_mode=True, use_yolo = True, training = False, visualize = True, grid_visualize = True)
+    main = Main(human_mode=False, use_yolo = False, training = False, visualize = True, grid_visualize = True)
 
     main.run()
 
