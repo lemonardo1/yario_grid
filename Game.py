@@ -149,10 +149,10 @@ class Game():
         ram = self.env.get_ram()
         reward = 0
         if self.is_dead():
-            reward -= 10000
+            reward -= 15
 
-        if self.is_get_item():
-            reward += 1000
+        # if self.is_get_item():
+        #     reward += 1000
 
         current_score = self.get_mario_score()   
         score_diff = current_score - self.prev_score
@@ -165,10 +165,10 @@ class Game():
         mario_position = SMB.get_mario_location_in_level(ram)
         position_diff = mario_position.x - self.prev_mario_x
         # print(f"position_diff: {position_diff}")
-        reward += (position_diff) * 10
+        reward += (position_diff)
 
         if position_diff <= 0:
-            reward -= 50
+            reward -= 1
         self.prev_mario_x = mario_position.x
         # print(f"reward: {reward}")
         return reward

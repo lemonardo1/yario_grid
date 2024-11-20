@@ -13,12 +13,12 @@ from InputType import AgentInput
 
 # 하이퍼파라미터
 NUM_EPISODES = 1000
-MAX_STEPS = 1000#30* 401 # 한 프레임30, 총 400초
+MAX_STEPS = 100000#30* 401 # 한 프레임30, 총 400초
 GAMMA = 0.99
 GAE_LAMBDA = 0.95
-UPDATE_INTERVAL = 100  # 업데이트 주기
+UPDATE_INTERVAL = 500  # 업데이트 주기
 BATCH_SIZE = 64
-CLIP_EPSILON = 0.2  # PPO 클리핑 epsilon 값
+CLIP_EPSILON = 0.15  # PPO 클리핑 epsilon 값
 LR = 3e-3  # 학습률
 
 class Trainer():
@@ -84,10 +84,7 @@ class Trainer():
             actual_steps = 0
             for step in range(MAX_STEPS):
                 current_time = time.time()
-                if step % 100 == 0:
-                    print(f"prev action: {self.prev_action}")
-                    print(f"current_step: {step}")
-                    print(f"elapsed time: {current_time - start_time}")
+
                    
                 tensor_state = self.get_tensor()
                 # 누적 프레임이 충분하지 않으면 이전 action을 입력
@@ -117,6 +114,16 @@ class Trainer():
                 action_one_hot[action_int] = 1
                 # 보상 및 게임 정보 업데이트
                 reward, done, _ = self.game.step(action_np)  # step() 메소드에서 보상과 종료 여부 받기
+                
+                
+                if actual_steps % 100 == 0:
+                    print(f"prev action: {self.prev_action}")
+                    print(f"current_step: {step}")
+                    print(f"elapsed time: {current_time - start_time}")
+                    print(f"reward: {reward}")
+                    print(f"log_prob: {log_prob}")
+                
+                
                 # print(f"reward: {reward}")
                 # print(f"action: {action_int}")
                 # log_prob = 
@@ -153,7 +160,7 @@ class Trainer():
                     # PPO 업데이트: 클리핑 기법을 사용하여 정책 업데이트
                     self.agent.update(states, actions, returns, advantages, log_probs, old_log_probs, old_values, self.optimizer, BATCH_SIZE, CLIP_EPSILON)
                     print("save_model")
-                    self.save_model(episode)
+                    # self.save_model(episode)
                     # 매 업데이트 후 로그 초기화
                     rewards, log_probs, values, masks, actions = [], [], [], [], []
                     old_log_probs, old_values = [], []

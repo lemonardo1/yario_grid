@@ -219,7 +219,7 @@ if __name__ == "__main__":
     #    use_yolo가 true이면 yolo에서 인식된 결과를 출력
     #    use_yolo가 false이면 게임에서 직접 불러온 결과를 출력
     
-    main = Main(human_mode=False, use_yolo = False, training = False, visualize = True, grid_visualize = True)
+    main = Main(human_mode=False, use_yolo = False, training = True, visualize = True, grid_visualize = False)
 
     main.run()
 
