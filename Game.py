@@ -84,6 +84,9 @@ class Game():
 
     def visualize_frame(self):
         if self.visualize:
+            pygame.event.pump()
+                
+
             rendered_frame = self.env.render(mode='rgb_array').swapaxes(0, 1)
             frame = pygame.surfarray.make_surface(rendered_frame)
             frame_scaled = pygame.transform.scale(frame, (self.x_pixel_num, self.y_pixel_num))
@@ -158,7 +161,7 @@ class Game():
         score_diff = current_score - self.prev_score
         self.prev_score = current_score
 
-        reward += score_diff
+        reward += score_diff / 100
 
         # 스크린이 시작하는 지점의 값
         # 끝났을때가 3040

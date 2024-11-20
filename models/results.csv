@@ -1,0 +1,2 @@
+Model File,Episode,Gamma,GAE Lambda,Batch Size,Clip Epsilon,LR Policy,LR Value,Update Interval,Average Reward,Average Policy Loss,Average Value Loss
+ppo_agent_episode_0_1732116333.pth,0,0.99,0.95,64,0.15,0.001,0.001,25.0,-0.28,-6.736985111236573,81.40392761230468

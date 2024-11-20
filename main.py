@@ -14,6 +14,8 @@ import pygame
 import sys
 import threading
 import torch
+import os
+import csv
 
 # self.game.is_playable()
 # self.game.is_dead()
@@ -24,7 +26,7 @@ import torch
 
 # TODO get_yolo_format_for_game로 타일 정보 받으면 좀 이상한데 다시 기존 방식으로도 다시 해보기
 class Main:
-    def __init__(self, human_mode=True, use_yolo = True, training = False, visualize = True, grid_visualize = False):
+    def __init__(self, model_path = None, human_mode=True, use_yolo = True, training = False, visualize = True, grid_visualize = False):
         pygame.init()
         self.fps = 60
         self.x_pixel_num = 256
@@ -43,6 +45,8 @@ class Main:
 
 
         self.is_grid_shown = False
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         if self.grid_visualize:
             self.grid_window.show()
@@ -53,32 +57,46 @@ class Main:
         self.action_dim = 12
         if self.use_yolo:
             self.yolo_model = Yolo_Model(self.x_pixel_num, self.y_pixel_num)
+            self.yolo_model
             # self.yolo_model.set_logging()
         
-        if self.human_mode:
-            self.input_device = HumanInput()
-        else:
+        self.model_path = model_path
+        if not self.human_mode:
             self.init_agent_mode()
-
-
+        else:
+            self.input_device = HumanInput()
+            
     def init_agent_mode(self):
+        self.load_model()
         if not self.training:
-            input_dim = (15 * 16 * 4 + 3) * 4 + 12 # (15 * 16 * 4 + 3(마리오 상태) ) * 4 + 12(action) : 3864
-            # TODO 이전 action 12개 더하기 
-            hidden_dims = [1024, 256]
-            output_dim = 12                   # action 12개
-
-            # TODO 여기서 기존에 저장한 파라미터 불러올 수 있게
-            self.agent = PPOAgent(input_dim, hidden_dims, output_dim)
             self.input_device = AgentInput(self.agent)
-
-
             self.game_thread = threading.Thread(target=self.game.run)
             self.game_thread.start()
         else:
-            trainer = Trainer(self.game, self.use_yolo)
+            trainer = Trainer(agent = self.agent, game = self.game, use_yolo = self.use_yolo)
             # trainer.train_test()
             trainer.train()
+
+    def load_model(self):
+        input_dim = (15 * 16 * 4 + 3) * 4 + 12 # (15 * 16 * 4 + 3(마리오 상태) ) * 4 + 12(action) : 3864
+        # TODO 이전 action 12개 더하기 
+        hidden_dims = [1024, 256]
+        output_dim = 12                   # action 12개
+
+        # TODO 여기서 기존에 저장한 파라미터 불러올 수 있게
+        self.agent = PPOAgent(input_dim, hidden_dims, output_dim).to(self.device)
+        if self.model_path != None:
+            # 모델 경로에서 파라미터를 로드하고 적용
+            if hasattr(self, 'model_path') and self.model_path:
+                try:
+                    loaded_data = torch.load(self.model_path, map_location=self.device)
+                    model_state_dict = loaded_data['model_state_dict']  # 이 부분을 추가
+                    self.agent.load_state_dict(model_state_dict)
+                    print("Model loaded successfully from:", self.model_path)
+                except Exception as e:
+                    print(f"Failed to load model from {self.model_path}. Error: {e}")
+                    raise Exception("Critical error: Model loading failed, stopping execution.") from e
+
 
     def init_grid_window(self, grid_window):
         self.is_grid_shown = True
@@ -161,10 +179,11 @@ class Main:
                         prev_action_int = self.input_device.get_action_int(self.prev_action)
                         prev_action_one_hot[prev_action_int] = 1
                         full_state = torch.cat([tensor, prev_action_one_hot])
+                        full_state = full_state.to(self.device)
                         action = self.input_device.get_action(full_state)
                         
                         # action = self.input_device.get_jump_action()
-                        print(action)
+                        # print(action)
                         self.game.receive_action(action)
                         last_update_time = current_time
                         self.prev_action = action
@@ -198,6 +217,45 @@ def yolo_test():
 
     print('end')
 
+def model_summary(model_path="./models"):
+    model_files = [f for f in os.listdir(model_path) if f.endswith('.pth')]
+    results_path = os.path.join(model_path, "results.csv")
+    
+    with open(results_path, 'w', newline='') as file:
+        writer = csv.writer(file)
+        # CSV 파일 헤더 작성
+        writer.writerow(["Model File", "Episode", "Gamma", "GAE Lambda", "Batch Size", "Clip Epsilon", "LR Policy", "LR Value", "Update Interval", "Average Reward", "Average Policy Loss", "Average Value Loss"])
+        
+        # 각 모델 파일에 대해 정보를 로드하고 CSV 파일에 쓴다.
+        for file_name in model_files:
+            file_path = os.path.join(model_path, file_name)
+            try:
+                data = torch.load(file_path)
+                episode = data.get('episode', 'N/A')
+                hyperparameters = data.get('hyperparameters', {})
+                performance_metrics = data.get('performance_metrics', {})
+
+                # Hyperparameters and performance metrics flattened for CSV
+                gamma = hyperparameters.get('gamma', 'N/A')
+                gae_lambda = hyperparameters.get('gae_lambda', 'N/A')
+                batch_size = hyperparameters.get('batch_size', 'N/A')
+                clip_epsilon = hyperparameters.get('clip_epsilon', 'N/A')
+                lr_policy = hyperparameters.get('lr_policy', 'N/A')
+                lr_value = hyperparameters.get('lr_value', 'N/A')
+                update_interval = hyperparameters.get('update_interval', 'N/A')
+                
+                avg_reward = performance_metrics.get('average_reward', 'N/A')
+                avg_policy_loss = performance_metrics.get('avg_policy_loss', 'N/A')
+                avg_value_loss = performance_metrics.get('avg_value_loss', 'N/A')
+
+                # CSV로 데이터 작성
+                writer.writerow([file_name, episode, gamma, gae_lambda, batch_size, clip_epsilon, lr_policy, lr_value, update_interval, avg_reward, avg_policy_loss, avg_value_loss])
+            
+            except Exception as e:
+                print(f"Failed to load information from {file_path}. Error: {e}")
+    print('csv file saved')
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)  # QApplication 객체 생성
 
@@ -219,7 +277,9 @@ if __name__ == "__main__":
     #    use_yolo가 true이면 yolo에서 인식된 결과를 출력
     #    use_yolo가 false이면 게임에서 직접 불러온 결과를 출력
     
-    main = Main(human_mode=False, use_yolo = False, training = True, visualize = True, grid_visualize = False)
-
+    
+    # model_summary()
+    model_path =  "./models/ppo_agent_episode_0_1732116333.pth"
+    main = Main(model_path = model_path, human_mode=False, use_yolo = False, training = True, visualize = True, grid_visualize = False)
     main.run()
 

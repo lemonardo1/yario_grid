@@ -23,7 +23,9 @@ class Yolo_Model():
         self.x_unit_length = self.x_pixel_num / self.x_grid_num
         self.y_unit_length = self.y_pixel_num / self.y_grid_num
 
-        self.model = YOLO("best.pt")
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = YOLO("best.pt").to(self.device)
         self.frame_count = 0
 
         self.grid_size = self.x_grid_num * self.y_grid_num

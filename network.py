@@ -1,22 +1,45 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
 
 # PPO 에이전트 네트워크 정의
 class PPOAgent(nn.Module):
-    def __init__(self, input_dim, hidden_dims, output_dim):
+    def __init__(self, input_dim, hidden_dims, output_dim, lr_policy=1e-3, lr_value=1e-3):
         super(PPOAgent, self).__init__()
         self.input_dim = input_dim
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        ########### action head ###########
         self.fc1 = nn.Linear(input_dim, hidden_dims[0])
         self.fc2 = nn.Linear(hidden_dims[0], hidden_dims[1])
         self.action_head = nn.Linear(hidden_dims[1], output_dim)
-        self.value_head = nn.Linear(hidden_dims[1], 1)
+        
+
+        ############ value head ###########
+        self.fc1_val = nn.Linear(input_dim, hidden_dims[0])
+        self.value_head = nn.Linear(hidden_dims[0], 1)
+
+        ############# optimizer ############
+        self.policy_optimizer = optim.Adam(self.get_policy_parameters(), lr=lr_policy)
+        self.value_optimizer = optim.Adam(self.get_value_parameters(), lr=lr_value)
+
+        # 파라미터 반환 메소드
+    def get_policy_parameters(self):
+        return list(self.fc1.parameters()) + list(self.fc2.parameters()) + list(self.action_head.parameters())
+
+    def get_value_parameters(self):
+        return list(self.fc1_val.parameters()) + list(self.value_head.parameters())
 
     def forward(self, x):
+        x_val = F.relu(self.fc1_val(x))
+        value = self.value_head(x_val)
+
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         action_logits = self.action_head(x)
-        value = self.value_head(x)
+        
         return action_logits, value
 
     def select_action(self, state):
@@ -32,18 +55,18 @@ class PPOAgent(nn.Module):
         return action.item(), action, dist.log_prob(action).unsqueeze(0), value
     
 
-    def update(self, states, actions, returns, advantages, log_probs, old_log_probs, old_values, optimizer, batch_size, clip_epsilon):
-        # returns, advantages, log_probs, old_log_probs, old_values는 모두 텐서의 리스트 또는 텐서입니다.
-        # Tensor로 변환하는 과정
-        # print("States Tensor Shape:", len(states))
-        states = torch.stack(states, dim=0).detach()
-        # print("States Tensor Shape:", states.shape)
-        actions = torch.cat(actions).detach()  # 행동 인덱스 텐서
-        returns = torch.cat(returns).detach()
-        advantages = torch.cat(advantages).detach()
-        log_probs = torch.cat(log_probs)
-        old_log_probs = torch.cat(old_log_probs).detach()
-        old_values = torch.cat(old_values).detach()
+    def update(self, states, actions, returns, advantages, log_probs, old_log_probs, old_values, batch_size, clip_epsilon):
+        # Tensor로 변환하는 과정, 모든 텐서를 self.device로 이동
+        states = torch.stack(states, dim=0).to(self.device).detach()
+        actions = torch.cat(actions).to(self.device).detach()  # 행동 인덱스 텐서
+        returns = torch.cat(returns).to(self.device).detach()
+        advantages = torch.cat(advantages).to(self.device).detach()
+        log_probs = torch.cat(log_probs).to(self.device)
+        old_log_probs = torch.cat(old_log_probs).to(self.device).detach()
+        old_values = torch.cat(old_values).to(self.device).detach()
+  
+        policy_losses = []
+        value_losses = []
 
         # 정책 및 가치 네트워크의 손실을 계산
         for _ in range(10):  # PPO는 일반적으로 여러 에폭동안 같은 샘플로 업데이트를 수행
@@ -81,14 +104,26 @@ class PPOAgent(nn.Module):
                 # value_loss = F.mse_loss(values, sampled_returns)
                 value_loss = F.mse_loss(values.squeeze(1), sampled_returns)
 
+                self.policy_optimizer.zero_grad()
+                policy_loss.backward()
+                self.policy_optimizer.step()
 
-                # 전체 손실
-                loss = policy_loss + 0.5 * value_loss
+                self.value_optimizer.zero_grad()
+                value_loss.backward()
+                self.value_optimizer.step()
 
-                # 업데이트
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+                policy_losses.append(policy_loss.item())
+                value_losses.append(value_loss.item())
+                # # 전체 손실
+                # loss = policy_loss + 0.5 * value_loss
+
+                # # 업데이트
+                # optimizer.zero_grad()
+                # loss.backward()
+                # optimizer.step()
+        avg_policy_loss = sum(policy_losses) / len(policy_losses)
+        avg_value_loss = sum(value_losses) / len(value_losses)
+        return avg_policy_loss, avg_value_loss
 
 
 
