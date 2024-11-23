@@ -46,7 +46,7 @@ class Game():
         self.previous_action = np.array( [0, 1,    0,      0,     0, 0, 0, 0, 0], np.int8)
         self.prev_mario_state = 0
         self.prev_score = 0
-        self.prev_mario_x = 0
+        self.prev_mario_x = 40
         self.action_map = { 0: np.array( [0, 1,    0,      0,     0, 0, 0, 0, 0], np.int8),
                     1: np.array( [0, 0,    0,      0,     0, 1, 0, 0, 0], np.int8),
                     2: np.array( [0, 0,    0,      0,     0, 0, 1, 0, 0], np.int8),
@@ -230,7 +230,7 @@ class Game():
 
         self.prev_score = 0
         self.prev_mario_state = 0
-        self.prev_mario_x = 0
+        self.prev_mario_x = 40
 
 
 
