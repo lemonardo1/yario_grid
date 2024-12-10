@@ -118,3 +118,8 @@ class YoloLabel(Enum):
 ## 참고
 - [Chrispresso/SuperMarioBros-AI](https://github.com/Chrispresso/SuperMarioBros-AI)
 🚀
+
+
+## Plan
+
+Docker 적용을 진행하여 다양한 환경에서 실행을 가능하도록 할 예정입니다.
